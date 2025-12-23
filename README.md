@@ -83,6 +83,7 @@ snow.start();
 |    `dprCap`    |      `number`      |        `2`         | Upper bound for devicePixelRatio.                                   |
 | `maxParticles` |      `number`      |       `4000`       | Hard cap for total particles.                                       |
 | `autoInsertStyles` | `boolean` | `true` | Automatically injects default canvas styles on `init()`. Disable to supply custom CSS. |
+| `initialFill` | `'filled'` | `undefined` | If set to `'filled'`, particles spawn across the full viewport height immediately. If omitted, snowfall starts from top as usual. |
 
 <br>
 

@@ -2,6 +2,8 @@ import CSS_TEXT from './snowfall-canvas.css?raw';
 
 export type Range = readonly [min: number, max: number];
 
+export type InitialFillMode = 'filled';
+
 export interface SnowConfig {
   amount: number;
   size: Range;
@@ -12,6 +14,11 @@ export interface SnowConfig {
   dprCap: number;
   maxParticles: number;
   autoInsertStyles: boolean;
+  /**
+   * Controls how particles are initialized on (re)seed:
+   * - 'filled': spawn randomly across the full viewport height (instant filled look)
+   */
+  initialFill?: InitialFillMode;
 }
 
 export type SnowConfigInput = Partial<SnowConfig>;
@@ -250,7 +257,12 @@ export class SnowfallCanvas {
   private seedParticle(i: number): void {
     this.originX[i] = rand(0, this.width);
     this.posX[i] = this.originX[i];
-    this.posY[i] = rand(-this.height, 0);
+    if (this.config.initialFill === 'filled') {
+      this.posY[i] = rand(0, this.height);
+    } else {
+      // default behavior: start above the viewport
+      this.posY[i] = rand(-this.height, 0);
+    }
     this.dx[i] = rand(0, TWO_PI);
 
     this.velX[i] = rand(this.config.swingSpeed[0], this.config.swingSpeed[1]);
