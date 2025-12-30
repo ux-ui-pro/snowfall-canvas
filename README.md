@@ -6,6 +6,8 @@
 [![npm](https://img.shields.io/npm/v/snowfall-canvas.svg?colorB=brightgreen)](https://www.npmjs.com/package/snowfall-canvas)
 [![GitHub package version](https://img.shields.io/github/package-json/v/ux-ui-pro/snowfall-canvas.svg)](https://github.com/ux-ui-pro/snowfall-canvas)
 [![NPM Downloads](https://img.shields.io/npm/dm/snowfall-canvas.svg?style=flat)](https://www.npmjs.org/package/snowfall-canvas)
+
+<a href="https://codepen.io/ux-ui/pen/zxBGXgm">Demo</a>
 </div>
 <br>
 
