@@ -1,6 +1,6 @@
 {
   "name": "snowfall-canvas",
-  "version": "1.1.1",
+  "version": "2.0.0",
   "description": "SnowfallCanvas is a high-performance snowfall animation for any HTMLCanvasElement with automatic DPR and performance adaptation.",
   "author": "ux-ui.pro",
   "license": "MIT",
@@ -32,7 +32,6 @@
       "import": "./dist/index.es.js",
       "require": "./dist/index.cjs.js"
     },
-    "./snowfall-canvas.css": "./dist/snowfall-canvas.css",
     "./dist/*": "./dist/*"
   },
   "files": [
@@ -41,7 +40,6 @@
   "devDependencies": {
     "@biomejs/biome": "2.3.10",
     "@types/node": "25.0.3",
-    "lightningcss": "1.30.2",
     "rimraf": "6.1.2",
     "typescript": "5.9.3",
     "vite": "7.3.0",

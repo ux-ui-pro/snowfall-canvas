@@ -1,8 +1,4 @@
-import CSS_TEXT from './snowfall-canvas.css?raw';
-
 export type Range = readonly [min: number, max: number];
-
-export type InitialFillMode = 'filled';
 
 export interface SnowConfig {
   amount: number;
@@ -13,29 +9,26 @@ export interface SnowConfig {
   color: string;
   dprCap: number;
   maxParticles: number;
-  autoInsertStyles: boolean;
-  /**
-   * Controls how particles are initialized on (re)seed:
-   * - 'filled': spawn randomly across the full viewport height (instant filled look)
-   */
-  initialFill?: InitialFillMode;
 }
 
 export type SnowConfigInput = Partial<SnowConfig>;
 
+export interface SnowfallCanvasOptions {
+  canvas: HTMLCanvasElement | string;
+  container: HTMLElement | string;
+  config?: SnowConfigInput;
+}
+
 export const defaultConfig: SnowConfig = {
-  amount: 5000,
-  size: [0.5, 1.5],
-  swingSpeed: [0.1, 1],
-  fallSpeed: [40, 100],
-  amplitude: [25, 50],
+  amount: 1500,
+  maxParticles: 2500,
+  size: [0.8, 1.5],
+  swingSpeed: [0.2, 0.8],
+  fallSpeed: [40, 80],
+  amplitude: [20, 45],
   color: 'rgb(225,225,225)',
   dprCap: 2,
-  maxParticles: 4000,
-  autoInsertStyles: true,
 };
-
-export const snowfallCanvasCssText: string = CSS_TEXT;
 
 const rand = (min: number, max: number): number => Math.random() * (max - min) + min;
 
@@ -49,9 +42,27 @@ for (let i = 0; i < SIN_TABLE_SIZE; i += 1) {
   SIN_TABLE[i] = Math.sin((i / SIN_TABLE_SIZE) * TWO_PI);
 }
 
+const resolveElementById = <T extends HTMLElement>(id: string, kind: string): T => {
+  const el = document.getElementById(id);
+
+  if (!el) {
+    throw new Error(`${kind} not found: ${id}`);
+  }
+
+  return el as T;
+};
+
+const resolveElement = <T extends HTMLElement>(elOrId: T | string, kind: string): T => {
+  if (typeof elOrId === 'string') return resolveElementById<T>(elOrId, kind);
+
+  return elOrId;
+};
+
 export class SnowfallCanvas {
   private canvas: HTMLCanvasElement;
-  private ctx: CanvasRenderingContext2D;
+  private readonly ctx: CanvasRenderingContext2D;
+
+  private readonly container: HTMLElement;
 
   private running = false;
   private rafId: number | null = null;
@@ -63,7 +74,6 @@ export class SnowfallCanvas {
 
   private resizeObserver: ResizeObserver | null = null;
   private resizeQueued = false;
-  private container: HTMLElement | null = null;
   private fallbackResizeAttached = false;
 
   private particleCount = 0;
@@ -84,29 +94,19 @@ export class SnowfallCanvas {
 
   private config: SnowConfig;
 
-  constructor(canvas: HTMLCanvasElement | string, config: SnowConfigInput = {}) {
-    this.canvas =
-      typeof canvas === 'string'
-        ? ((document.getElementById(canvas) as HTMLCanvasElement | null) ??
-          (() => {
-            throw new Error(`Canvas not found: ${canvas}`);
-          })())
-        : canvas;
+  constructor(options: SnowfallCanvasOptions) {
+    this.canvas = resolveElement<HTMLCanvasElement>(options.canvas, 'Canvas');
+    this.container = resolveElement<HTMLElement>(options.container, 'Container');
 
     const ctx = this.canvas.getContext('2d');
 
     if (!ctx) throw new Error('2D context is not supported');
 
     this.ctx = ctx;
-    this.container = this.canvas.parentElement;
-    this.config = { ...defaultConfig, ...config };
+    this.config = { ...defaultConfig, ...(options.config ?? {}) };
   }
 
   init(): void {
-    if (this.config.autoInsertStyles) {
-      this.ensureDefaultStyles();
-    }
-
     this.resizeToContainer();
     this.setupResizeWatcher();
     this.setupVisibilityWatcher();
@@ -139,60 +139,12 @@ export class SnowfallCanvas {
 
     if (this.fallbackResizeAttached) {
       window.removeEventListener('resize', this.queueResize);
-
       this.fallbackResizeAttached = false;
     }
 
     if (this.visibilityHandlerAttached) {
       document.removeEventListener('visibilitychange', this.handleVisibilityChange);
-
       this.visibilityHandlerAttached = false;
-    }
-
-    this.container = null;
-  }
-
-  private ensureDefaultStyles(): void {
-    if (typeof document === 'undefined') return;
-
-    const existing =
-      document.querySelector('style[data-snowfall-canvas]') ??
-      document.getElementById('snowfall-canvas-style');
-
-    if (existing) return;
-
-    const style = document.createElement('style');
-
-    style.id = 'snowfall-canvas-style';
-    style.setAttribute('data-snowfall-canvas', 'true');
-    style.textContent = snowfallCanvasCssText;
-
-    document.head.append(style);
-  }
-
-  resize(width: number, height: number, nextCount?: number): void {
-    const normalizedWidth = Math.max(1, Math.floor(width));
-    const normalizedHeight = Math.max(1, Math.floor(height));
-    const dpr = this.getTargetDpr();
-    const count = nextCount ?? this.particleCount;
-
-    const dimensionsChanged =
-      normalizedWidth !== this.width || normalizedHeight !== this.height || dpr !== this.dpr;
-
-    this.width = normalizedWidth;
-    this.height = normalizedHeight;
-    this.dpr = dpr;
-
-    this.canvas.style.width = `${this.width}px`;
-    this.canvas.style.height = `${this.height}px`;
-
-    this.canvas.width = Math.floor(this.width * this.dpr);
-    this.canvas.height = Math.floor(this.height * this.dpr);
-
-    this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-
-    if (count > 0 && (dimensionsChanged || count !== this.particleCount)) {
-      this.reseedParticles(count);
     }
   }
 
@@ -214,6 +166,10 @@ export class SnowfallCanvas {
     const count = this.getDensityAdjustedCount(this.width, this.height);
 
     this.reseedParticles(count);
+  }
+
+  requestResize(): void {
+    this.queueResize();
   }
 
   private loop = (t: number): void => {
@@ -257,12 +213,9 @@ export class SnowfallCanvas {
   private seedParticle(i: number): void {
     this.originX[i] = rand(0, this.width);
     this.posX[i] = this.originX[i];
-    if (this.config.initialFill === 'filled') {
-      this.posY[i] = rand(0, this.height);
-    } else {
-      // default behavior: start above the viewport
-      this.posY[i] = rand(-this.height, 0);
-    }
+
+    this.posY[i] = rand(0, this.height);
+
     this.dx[i] = rand(0, TWO_PI);
 
     this.velX[i] = rand(this.config.swingSpeed[0], this.config.swingSpeed[1]);
@@ -326,20 +279,17 @@ export class SnowfallCanvas {
   }
 
   private setupResizeWatcher(): void {
-    const target = this.container;
-
-    if (typeof ResizeObserver !== 'undefined' && target) {
+    if (typeof ResizeObserver !== 'undefined') {
       if (this.resizeObserver) return;
 
       this.resizeObserver = new ResizeObserver(() => this.queueResize());
-      this.resizeObserver.observe(target);
+      this.resizeObserver.observe(this.container);
 
       return;
     }
 
     if (!this.fallbackResizeAttached) {
       window.addEventListener('resize', this.queueResize, { passive: true });
-
       this.fallbackResizeAttached = true;
     }
   }
@@ -348,7 +298,6 @@ export class SnowfallCanvas {
     if (typeof document === 'undefined' || this.visibilityHandlerAttached) return;
 
     document.addEventListener('visibilitychange', this.handleVisibilityChange, { passive: true });
-
     this.visibilityHandlerAttached = true;
   }
 
@@ -376,7 +325,6 @@ export class SnowfallCanvas {
 
     if (this.autoPausedByVisibility) {
       this.autoPausedByVisibility = false;
-
       this.start();
     }
   };
@@ -384,7 +332,6 @@ export class SnowfallCanvas {
   private maybeAdjustPerformance(): void {
     if (this.perfCooldownFrames > 0) {
       this.perfCooldownFrames -= 1;
-
       return;
     }
 
@@ -406,7 +353,7 @@ export class SnowfallCanvas {
           this.getDensityAdjustedCount(this.width, this.height),
         );
 
-        this.resize(this.width, this.height, nextCount);
+        this.applyResize(this.width, this.height, nextCount);
       }
     }
   }
@@ -423,12 +370,41 @@ export class SnowfallCanvas {
   };
 
   private resizeToContainer(): void {
-    const target = this.container;
-    const width = target?.clientWidth ?? window.innerWidth;
-    const height = target?.clientHeight ?? window.innerHeight;
-    const nextCount = this.getDensityAdjustedCount(width, height);
+    const cssWidth = this.container.clientWidth;
+    const cssHeight = this.container.clientHeight;
 
-    this.resize(width, height, nextCount);
+    if (cssWidth <= 0 || cssHeight <= 0) {
+      this.applyResize(1, 1, 0);
+      return;
+    }
+
+    const nextCount = this.getDensityAdjustedCount(cssWidth, cssHeight);
+    this.applyResize(cssWidth, cssHeight, nextCount);
+  }
+
+  private applyResize(width: number, height: number, nextCount?: number): void {
+    const normalizedWidth = Math.max(1, Math.floor(width));
+    const normalizedHeight = Math.max(1, Math.floor(height));
+    const dpr = this.getTargetDpr();
+    const count = nextCount ?? this.particleCount;
+
+    const dimensionsChanged =
+      normalizedWidth !== this.width || normalizedHeight !== this.height || dpr !== this.dpr;
+
+    this.width = normalizedWidth;
+    this.height = normalizedHeight;
+    this.dpr = dpr;
+
+    this.canvas.width = Math.floor(this.width * this.dpr);
+    this.canvas.height = Math.floor(this.height * this.dpr);
+
+    this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+
+    if (count > 0 && (dimensionsChanged || count !== this.particleCount)) {
+      this.reseedParticles(count);
+    } else if (count === 0 && this.particleCount !== 0) {
+      this.reseedParticles(0);
+    }
   }
 
   private getDensityAdjustedCount(width: number, height: number): number {
