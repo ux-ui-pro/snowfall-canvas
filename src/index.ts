@@ -139,11 +139,13 @@ export class SnowfallCanvas {
 
     if (this.fallbackResizeAttached) {
       window.removeEventListener('resize', this.queueResize);
+
       this.fallbackResizeAttached = false;
     }
 
     if (this.visibilityHandlerAttached) {
       document.removeEventListener('visibilitychange', this.handleVisibilityChange);
+
       this.visibilityHandlerAttached = false;
     }
   }
@@ -213,11 +215,8 @@ export class SnowfallCanvas {
   private seedParticle(i: number): void {
     this.originX[i] = rand(0, this.width);
     this.posX[i] = this.originX[i];
-
     this.posY[i] = rand(0, this.height);
-
     this.dx[i] = rand(0, TWO_PI);
-
     this.velX[i] = rand(this.config.swingSpeed[0], this.config.swingSpeed[1]);
     this.velY[i] = rand(this.config.fallSpeed[0], this.config.fallSpeed[1]);
     this.size[i] = rand(this.config.size[0], this.config.size[1]);
@@ -290,6 +289,7 @@ export class SnowfallCanvas {
 
     if (!this.fallbackResizeAttached) {
       window.addEventListener('resize', this.queueResize, { passive: true });
+
       this.fallbackResizeAttached = true;
     }
   }
@@ -298,6 +298,7 @@ export class SnowfallCanvas {
     if (typeof document === 'undefined' || this.visibilityHandlerAttached) return;
 
     document.addEventListener('visibilitychange', this.handleVisibilityChange, { passive: true });
+
     this.visibilityHandlerAttached = true;
   }
 
@@ -325,6 +326,7 @@ export class SnowfallCanvas {
 
     if (this.autoPausedByVisibility) {
       this.autoPausedByVisibility = false;
+
       this.start();
     }
   };
@@ -332,6 +334,7 @@ export class SnowfallCanvas {
   private maybeAdjustPerformance(): void {
     if (this.perfCooldownFrames > 0) {
       this.perfCooldownFrames -= 1;
+
       return;
     }
 
@@ -375,10 +378,12 @@ export class SnowfallCanvas {
 
     if (cssWidth <= 0 || cssHeight <= 0) {
       this.applyResize(1, 1, 0);
+
       return;
     }
 
     const nextCount = this.getDensityAdjustedCount(cssWidth, cssHeight);
+
     this.applyResize(cssWidth, cssHeight, nextCount);
   }
 
